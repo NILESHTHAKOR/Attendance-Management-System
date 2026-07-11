@@ -1,0 +1,209 @@
+@model StudentDashboardViewModel
+@{
+    ViewData["Title"]  = "My Dashboard";
+    ViewData["Active"] = "dashboard";
+
+    string statusClass = Model.Status switch {
+        "active"      => "badge-active",
+        "warning"     => "badge-warning",
+        "blacklisted" => "badge-danger",
+        _             => "badge-secondary"
+    };
+    string statusIcon = Model.Status switch {
+        "active"      => "fa-circle-check",
+        "warning"     => "fa-triangle-exclamation",
+        "blacklisted" => "fa-circle-xmark",
+        _             => "fa-circle-question"
+    };
+}
+
+<!-- ══ Page header ══ -->
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Welcome, @Model.Name.Split(' ')[0]!</h2>
+        <p class="page-subtitle">@Model.RollNo · Semester @Model.SemesterNumber · Class @Model.ClassName</p>
+    </div>
+    <span class="badge @statusClass badge-lg">
+        <i class="fa-solid @statusIcon"></i>
+        @Model.Status.ToUpperInvariant()
+    </span>
+</div>
+
+<!-- ══ Summary Cards ══ -->
+<div class="stats-grid">
+    <div class="stat-card stat-card-blue">
+        <div class="stat-icon"><i class="fa-solid fa-percent"></i></div>
+        <div class="stat-body">
+            <div class="stat-value">@Model.AttendancePercent.ToString("F1")%</div>
+            <div class="stat-label">Overall Attendance</div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-green">
+        <div class="stat-icon"><i class="fa-solid fa-book-open"></i></div>
+        <div class="stat-body">
+            <div class="stat-value">@Model.SubjectSummaries.Count</div>
+            <div class="stat-label">Subjects</div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-yellow">
+        <div class="stat-icon"><i class="fa-solid fa-calendar-xmark"></i></div>
+        <div class="stat-body">
+            <div class="stat-value">@Model.SubjectSummaries.Sum(s => s.Absent)</div>
+            <div class="stat-label">Total Absences</div>
+        </div>
+    </div>
+    <div class="stat-card @(Model.Status == "active" ? "stat-card-green" : Model.Status == "warning" ? "stat-card-yellow" : "stat-card-red")">
+        <div class="stat-icon"><i class="fa-solid @statusIcon"></i></div>
+        <div class="stat-body">
+            <div class="stat-value">@Model.Status.ToUpperInvariant()</div>
+            <div class="stat-label">Current Status</div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Status Banner (if not active) ══ -->
+@if (Model.Status == "warning")
+{
+    <div class="alert alert-warning mt-2">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <strong>Warning!</strong> Your attendance is below the threshold. Please attend classes regularly to avoid being blacklisted.
+    </div>
+}
+@if (Model.Status == "blacklisted")
+{
+    <div class="alert alert-danger mt-2">
+        <i class="fa-solid fa-circle-xmark"></i>
+        <strong>Blacklisted!</strong> Your attendance has fallen critically low. Contact your Head of Department immediately.
+    </div>
+}
+
+<!-- ══ Two-column grid ══ -->
+<div class="two-col-grid mt-4">
+
+    <!-- Subject-wise Attendance -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fa-solid fa-chart-bar"></i> Subject-wise Attendance</h3>
+            <a asp-action="Report" class="btn btn-sm btn-outline">View Full Report</a>
+        </div>
+        <div class="card-body p-0">
+            @if (!Model.SubjectSummaries.Any())
+            {
+                <div class="empty-state">No attendance records found.</div>
+            }
+            else
+            {
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Classes</th>
+                            <th>Present</th>
+                            <th>%</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model.SubjectSummaries)
+                        {
+                            <tr>
+                                <td><strong>@s.Subject</strong></td>
+                                <td>@s.TotalClasses</td>
+                                <td>@s.Present</td>
+                                <td>
+                                    <div class="progress-bar-wrapper">
+                                        <div class="progress-bar-track">
+                                            <div class="progress-bar-fill @(s.Status == "active" ? "fill-green" : s.Status == "warning" ? "fill-yellow" : "fill-red")"
+                                                 style="width:@(Math.Min((double)s.AttendancePercent,100))%"></div>
+                                        </div>
+                                        <span>@s.AttendancePercent.ToString("F1")%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge @(s.Status == "active" ? "badge-active" : s.Status == "warning" ? "badge-warning" : "badge-danger")">
+                                        @s.Status
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <!-- Recent Attendance Log -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> Recent Records</h3>
+        </div>
+        <div class="card-body p-0">
+            @if (!Model.RecentRecords.Any())
+            {
+                <div class="empty-state">No recent records.</div>
+            }
+            else
+            {
+                <div class="attendance-log">
+                    @foreach (var r in Model.RecentRecords)
+                    {
+                        <div class="log-item">
+                            <div class="log-date">
+                                <div class="log-day">@r.Date.Day</div>
+                                <div class="log-month">@r.Date.ToString("MMM")</div>
+                            </div>
+                            <div class="log-details">
+                                <div class="log-subject">@r.Subject</div>
+                                <div class="log-class">@r.ClassName</div>
+                            </div>
+                            <span class="badge @(r.Status == "present" ? "badge-active" : r.Status == "late" ? "badge-warning" : "badge-danger")">
+                                @r.Status
+                            </span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- ══ Charts ══ -->
+@if (Model.SubjectSummaries.Any())
+{
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fa-solid fa-chart-pie"></i> Attendance Overview</h3>
+        </div>
+        <div class="card-body" style="height:280px">
+            <canvas id="attendanceChart"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+    const ctx = document.getElementById('attendanceChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [@Html.Raw(string.Join(",", Model.SubjectSummaries.Select(s => $"'{s.Subject}'")))],
+            datasets: [{
+                label: 'Attendance %',
+                data: [@string.Join(",", Model.SubjectSummaries.Select(s => s.AttendancePercent.ToString("F1")))],
+                backgroundColor: [@Html.Raw(string.Join(",", Model.SubjectSummaries.Select(s =>
+                    s.Status == "active" ? "'rgba(34,197,94,0.7)'"
+                    : s.Status == "warning" ? "'rgba(234,179,8,0.7)'"
+                    : "'rgba(239,68,68,0.7)'")))],
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { min: 0, max: 100, ticks: { callback: v => v + '%' } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+    </script>
+}

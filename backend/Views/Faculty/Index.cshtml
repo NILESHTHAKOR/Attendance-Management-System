@@ -1,0 +1,181 @@
+@model FacultyDashboardViewModel
+@{
+    ViewData["Title"]  = "Faculty Dashboard";
+    ViewData["Active"] = "dashboard";
+}
+
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Welcome, @Model.FacultyName.Split(' ').Last()!</h2>
+        <p class="page-subtitle">@Model.Subject · Faculty Dashboard</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="MarkAttendance" class="btn btn-primary">
+            <i class="fa-solid fa-pen-to-square"></i> Mark Attendance
+        </a>
+    </div>
+</div>
+
+<!-- ══ Stats ══ -->
+<div class="stats-grid">
+    <div class="stat-card stat-card-blue">
+        <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+        <div class="stat-body">
+            <div class="stat-value">@Model.TotalStudents</div>
+            <div class="stat-label">Total Students</div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-green">
+        <div class="stat-icon"><i class="fa-solid fa-user-check"></i></div>
+        <div class="stat-body">
+            <div class="stat-value">@Model.ActiveStudents</div>
+            <div class="stat-label">Active</div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-yellow">
+        <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div class="stat-body">
+            <div class="stat-value">@Model.WarningStudents</div>
+            <div class="stat-label">Warning</div>
+        </div>
+    </div>
+    <div class="stat-card stat-card-red">
+        <div class="stat-icon"><i class="fa-solid fa-user-xmark"></i></div>
+        <div class="stat-body">
+            <div class="stat-value">@Model.BlacklistedStudents</div>
+            <div class="stat-label">Blacklisted</div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Threshold info ══ -->
+<div class="alert alert-info mt-3">
+    <i class="fa-solid fa-sliders"></i>
+    Current thresholds — Blacklist: <strong>&lt; @Model.BlacklistThreshold%</strong> &nbsp;|&nbsp;
+    Warning: <strong>&lt; @Model.WarningThreshold%</strong>
+    <a asp-action="Threshold" class="ms-2">Edit</a>
+</div>
+
+<div class="two-col-grid mt-4">
+
+    <!-- Today's Timetable -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fa-solid fa-calendar-day"></i> Today's Classes</h3>
+            <span class="badge badge-secondary">@DateTime.Today.ToString("dddd, dd MMM")</span>
+        </div>
+        <div class="card-body">
+            @if (!Model.TodaySlots.Any())
+            {
+                <div class="empty-state">
+                    <i class="fa-solid fa-coffee"></i>
+                    <p>No classes scheduled today.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var slot in Model.TodaySlots)
+                {
+                    <div class="timetable-slot @(slot.AlreadyMarked ? "slot-done" : "slot-pending")">
+                        <div class="slot-time">
+                            <i class="fa-regular fa-clock"></i>
+                            @slot.StartTime – @slot.EndTime
+                        </div>
+                        <div class="slot-info">
+                            <div class="slot-subject">@slot.Subject</div>
+                            <div class="slot-class">Sem @slot.SemesterNumber / @slot.ClassName</div>
+                        </div>
+                        <div class="slot-action">
+                            @if (slot.AlreadyMarked)
+                            {
+                                <span class="badge badge-active"><i class="fa-solid fa-check"></i> Marked</span>
+                            }
+                            else
+                            {
+                                <a asp-action="MarkAttendance"
+                                   asp-route-semesterId="@slot.SemesterId"
+                                   asp-route-classId="@slot.ClassId"
+                                   asp-route-subject="@slot.Subject"
+                                   class="btn btn-sm btn-primary">
+                                    Mark
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> Recent Activity</h3>
+        </div>
+        <div class="card-body">
+            @if (!Model.RecentMarked.Any())
+            {
+                <div class="empty-state">No recent attendance marked.</div>
+            }
+            else
+            {
+                <table class="table table-sm">
+                    <thead>
+                        <tr><th>Date</th><th>Subject / Class</th><th>P / A / L</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.RecentMarked)
+                        {
+                            <tr>
+                                <td>@r.Date.ToString("dd MMM")</td>
+                                <td>
+                                    <strong>@r.Subject</strong><br>
+                                    <small class="text-muted">@r.ClassName</small>
+                                </td>
+                                <td>
+                                    <span class="text-green">@r.PresentCount</span> /
+                                    <span class="text-red">@r.AbsentCount</span> /
+                                    <span class="text-yellow">@r.LateCount</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Pie chart -->
+@if (Model.TotalStudents > 0)
+{
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fa-solid fa-chart-pie"></i> Student Status Distribution</h3>
+        </div>
+        <div class="card-body" style="height:260px;display:flex;align-items:center;justify-content:center">
+            <canvas id="statusChart" style="max-width:280px;max-height:240px"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+    new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Active','Warning','Blacklisted'],
+            datasets: [{
+                data: [@Model.ActiveStudents, @Model.WarningStudents, @Model.BlacklistedStudents],
+                backgroundColor: ['#22c55e','#eab308','#ef4444'],
+                hoverOffset: 6,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+    </script>
+}

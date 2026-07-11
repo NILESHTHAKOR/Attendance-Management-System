@@ -1,0 +1,54 @@
+@model List<AttendanceMS.Models.Student>
+@{
+    ViewData["Title"] = "Manage Students";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1 class="page-title"><i class="fa-solid fa-users"></i> Manage Students</h1>
+    <div class="d-flex gap-2">
+        <a asp-action="BulkUpload" class="btn btn-outline">
+            <i class="fa-solid fa-file-excel"></i> Bulk Upload
+        </a>
+        <a asp-action="CreateStudent" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i> Add Student
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th><th>Roll No</th><th>Name</th><th>Email</th>
+                    <th>Class</th><th>Semester</th><th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var (s, i) in Model.Select((s,i)=>(s,i+1)))
+            {
+                <tr>
+                    <td class="text-muted">@i</td>
+                    <td><strong>@s.RollNo</strong></td>
+                    <td>@s.Name</td>
+                    <td class="text-muted small">@s.Email</td>
+                    <td>@s.ClassName</td>
+                    <td>Sem @s.SemesterNumber</td>
+                    <td>
+                        <span class="badge badge-@(s.Status == "active" ? "success" : s.Status == "warning" ? "warning" : "danger")">
+                            @s.Status
+                        </span>
+                    </td>
+                </tr>
+            }
+            @if (!Model.Any())
+            {
+                <tr><td colspan="7" class="text-center text-muted py-4">
+                    No students yet. <a asp-action="BulkUpload">Bulk upload</a> or <a asp-action="CreateStudent">add manually</a>.
+                </td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

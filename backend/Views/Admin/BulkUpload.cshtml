@@ -1,0 +1,124 @@
+@model AdminStudentViewModel
+@{
+    ViewData["Title"] = "Bulk Upload Students";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <h1 class="page-title"><i class="fa-solid fa-file-excel"></i> Bulk Upload Students</h1>
+    <a asp-action="DownloadTemplate" class="btn btn-outline">
+        <i class="fa-solid fa-download"></i> Download Template
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header"><i class="fa-solid fa-upload"></i> Upload Excel File</div>
+            <div class="card-body">
+                <form asp-action="BulkUpload" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label class="form-label">Semester</label>
+                            <select name="semesterId" class="form-control" id="semesterSel"
+                                    onchange="loadClasses(this.value)" required>
+                                <option value="">-- Select --</option>
+                                @foreach (var s in Model.Semesters)
+                                {
+                                    <option value="@s.SemesterId">Semester @s.SemesterNumber</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-group col">
+                            <label class="form-label">Class</label>
+                            <select name="classId" class="form-control" id="classSel" required>
+                                <option value="">-- Select Semester First --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Excel File (.xlsx)</label>
+                        <div class="upload-area" id="uploadArea">
+                            <input type="file" name="file" id="fileInput" accept=".xlsx,.xls"
+                                   class="upload-input" onchange="showFileName(this)" required />
+                            <div class="upload-placeholder" id="uploadPlaceholder">
+                                <i class="fa-solid fa-cloud-arrow-up fa-2x mb-2" style="color:var(--primary)"></i>
+                                <p class="mb-1"><strong>Click to browse</strong> or drag & drop</p>
+                                <p class="text-muted small">Supported: .xlsx, .xls</p>
+                            </div>
+                        </div>
+                        <div id="fileName" class="form-hint mt-1"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mt-2">
+                        <i class="fa-solid fa-upload"></i> Upload & Import
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header"><i class="fa-solid fa-circle-info"></i> Instructions</div>
+            <div class="card-body">
+                <p>Your Excel file must have these columns in order:</p>
+                <table class="table table-sm">
+                    <thead><tr><th>Column</th><th>Required?</th><th>Example</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>A — Name</strong></td><td>Yes</td><td>John Doe</td></tr>
+                        <tr><td><strong>B — Email</strong></td><td>Yes</td><td>john@college.com</td></tr>
+                        <tr><td><strong>C — Phone</strong></td><td>No</td><td>9876543210</td></tr>
+                        <tr><td><strong>D — Roll No</strong></td><td>Yes</td><td>BCA001</td></tr>
+                        <tr><td><strong>E — Password</strong></td><td>No</td><td>Student@123</td></tr>
+                    </tbody>
+                </table>
+                <div class="alert alert-info mt-2">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    Row 1 is treated as the header row and is skipped. Students with duplicate emails are skipped automatically.
+                </div>
+                <a asp-action="DownloadTemplate" class="btn btn-outline w-100 mt-2">
+                    <i class="fa-solid fa-download"></i> Download Sample Template
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function loadClasses(semesterId) {
+    const sel = document.getElementById('classSel');
+    sel.innerHTML = '<option>Loading...</option>';
+    fetch('/Admin/GetClasses?semesterId=' + semesterId)
+        .then(r => r.json())
+        .then(data => {
+            sel.innerHTML = '<option value="">-- Select Class --</option>';
+            data.forEach(c => sel.innerHTML += `<option value="${c.classId}">${c.className}</option>`);
+        });
+}
+
+function showFileName(input) {
+    const fn = document.getElementById('fileName');
+    const ph = document.getElementById('uploadPlaceholder');
+    if (input.files.length > 0) {
+        fn.textContent = '📎 ' + input.files[0].name;
+        ph.querySelector('p').textContent = input.files[0].name;
+    }
+}
+
+// Drag and drop
+const area = document.getElementById('uploadArea');
+area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
+area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+area.addEventListener('drop', e => {
+    e.preventDefault();
+    area.classList.remove('dragover');
+    document.getElementById('fileInput').files = e.dataTransfer.files;
+    showFileName(document.getElementById('fileInput'));
+});
+</script>
+}

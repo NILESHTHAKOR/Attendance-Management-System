@@ -1,0 +1,189 @@
+@model ClassReportViewModel
+@{
+    ViewData["Title"]  = "Class Report";
+    ViewData["Active"] = "report";
+}
+
+<div class="page-header">
+    <div>
+        <h2 class="page-title">Class Attendance Report</h2>
+        <p class="page-subtitle">
+            Blacklist &lt; <strong>@Model.BlacklistThreshold%</strong> &nbsp;|&nbsp;
+            Warning &lt; <strong>@Model.WarningThreshold%</strong>
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        @{
+            var exportUrl = Url.Action("ExportClassExcel", new {
+                semesterId = Model.FilterSemesterId,
+                classId    = Model.FilterClassId,
+                subject    = Model.FilterSubject,
+                fromDate   = Model.FilterFromDate?.ToString("yyyy-MM-dd"),
+                toDate     = Model.FilterToDate?.ToString("yyyy-MM-dd")
+            });
+        }
+        <a href="@exportUrl" class="btn btn-outline btn-sm">
+            <i class="fa-solid fa-file-excel"></i> Export Excel
+        </a>
+    </div>
+</div>
+
+<!-- ══ Filters ══ -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="filter-form">
+            <div class="filter-row">
+                <div class="form-group">
+                    <label class="form-label">Semester</label>
+                    <select name="semesterId" id="semesterSelect" class="form-control">
+                        <option value="">All Semesters</option>
+                        @foreach (var sem in Model.Semesters)
+                        {
+                            <option value="@sem.SemesterId"
+                                    selected="@(Model.FilterSemesterId == sem.SemesterId)">
+                                Semester @sem.SemesterNumber
+                            </option> }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Class</label>
+                    <select name="classId" class="form-control" id="classSelect">
+                        <option value="">All Classes</option>
+                        @foreach (var cls in Model.Classes)
+                        {<option value="@cls.ClassId"
+        selected="@(Model.FilterClassId == cls.ClassId)">
+    Class @cls.ClassName
+</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Subject</label>
+                    <select name="subject" class="form-control">
+                        <option value="">All Subjects</option>
+                        @foreach (var sub in Model.Subjects)
+                        {
+                        <option value="@sub"
+                                selected="@(Model.FilterSubject == sub)">
+                            @sub
+                        </option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">From Date</label>
+                    <input type="date" name="fromDate" class="form-control"
+                           value="@Model.FilterFromDate?.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">To Date</label>
+                    <input type="date" name="toDate" class="form-control"
+                           value="@Model.FilterToDate?.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="form-group align-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-filter"></i> Filter
+                    </button>
+                    <a href="@Url.Action("ClassReport")" class="btn btn-outline">Reset</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══ Legend ══ -->
+<div class="legend-row mb-3">
+    <span class="badge badge-active"><i class="fa-solid fa-circle-check"></i> Active ≥ @Model.WarningThreshold%</span>
+    <span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation"></i> Warning @Model.BlacklistThreshold–@Model.WarningThreshold%</span>
+    <span class="badge badge-danger"><i class="fa-solid fa-circle-xmark"></i> Blacklisted &lt; @Model.BlacklistThreshold%</span>
+</div>
+
+<!-- ══ Results Table ══ -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title"><i class="fa-solid fa-table"></i> Results</h3>
+        <span class="badge badge-secondary">@Model.Summary.Count rows</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Summary.Any())
+        {
+            <div class="empty-state">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <p>No data found. Apply filters to generate a report.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover" id="reportTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Roll No</th>
+                            <th>Name</th>
+                            <th>Subject</th>
+                            <th>Total</th>
+                            <th class="text-green">Present</th>
+                            <th class="text-red">Absent</th>
+                            <th class="text-yellow">Late</th>
+                            <th>Attendance %</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ int serial = 1; }
+                        @foreach (var s in Model.Summary)
+                        {
+                            string rowCls = s.AttendancePercent < Model.BlacklistThreshold
+                                ? "row-danger"
+                                : s.AttendancePercent < Model.WarningThreshold
+                                ? "row-warning" : "";
+                            <tr class="@rowCls">
+                                <td>@serial++</td>
+                                <td><strong>@s.RollNo</strong></td>
+                                <td>@s.StudentName</td>
+                                <td>@s.Subject</td>
+                                <td>@s.TotalClasses</td>
+                                <td class="text-green">@s.Present</td>
+                                <td class="text-red">@s.Absent</td>
+                                <td class="text-yellow">@s.Late</td>
+                                <td>
+                                    <div class="progress-bar-wrapper">
+                                        <div class="progress-bar-track">
+                                            <div class="progress-bar-fill @(s.Status == "active" ? "fill-green" : s.Status == "warning" ? "fill-yellow" : "fill-red")"
+                                                 style="width:@(Math.Min((double)s.AttendancePercent,100))%"></div>
+                                        </div>
+                                        <span>@s.AttendancePercent.ToString("F1")%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge @(s.Status == "active" ? "badge-active" : s.Status == "warning" ? "badge-warning" : "badge-danger")">
+                                        @s.Status.ToUpperInvariant()
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.getElementById('semesterSelect')?.addEventListener('change', function() {
+    const semId = this.value;
+    if (!semId) { return; }
+    fetch(`/Faculty/GetClasses?semesterId=${semId}`)
+        .then(r => r.json())
+        .then(data => {
+            const sel = document.getElementById('classSelect');
+            sel.innerHTML = '<option value="">All Classes</option>';
+            data.forEach(c => {
+                sel.innerHTML += `<option value="${c.classId}">Class ${c.className}</option>`;
+            });
+        });
+});
+</script>
+}

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AttendanceMS</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Existing packages -->
+    <PackageReference Include="ClosedXML"            Version="0.102.2" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.5" />
+    <PackageReference Include="BCrypt.Net-Next"      Version="4.0.3" />
+
+    <!-- New: Email -->
+    <PackageReference Include="MailKit"              Version="4.3.0" />
+
+    <!-- New: PDF generation (Razor view → PDF) -->
+    <PackageReference Include="Rotativa.AspNetCore"  Version="1.0.3" />
+  </ItemGroup>
+
+</Project>

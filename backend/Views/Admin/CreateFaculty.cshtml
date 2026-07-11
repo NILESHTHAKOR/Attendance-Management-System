@@ -1,0 +1,46 @@
+@model AdminFacultyViewModel
+@{
+    ViewData["Title"] = "Add Faculty";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="page-header">
+    <h1 class="page-title"><i class="fa-solid fa-user-plus"></i> Add Faculty</h1>
+</div>
+
+<div class="card" style="max-width:600px">
+    <div class="card-body">
+        <form asp-action="CreateFaculty" method="post">
+            @Html.AntiForgeryToken()
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input asp-for="Name" class="form-control" placeholder="Dr. Rajesh Kumar" required />
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input asp-for="Email" type="email" class="form-control" placeholder="faculty@school.com" required />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Subject</label>
+                <input asp-for="Subject" class="form-control" list="subjectList" placeholder="Select or type subject" required />
+                <datalist id="subjectList">
+                @foreach (var s in Model.AllSubjects)
+                {
+                    <option value="@s" />
+                }
+                </datalist>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input asp-for="Password" class="form-control" placeholder="Faculty@123" />
+                <div class="form-hint">Default: Faculty@123</div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Create Faculty</button>
+                <a asp-action="Faculty" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

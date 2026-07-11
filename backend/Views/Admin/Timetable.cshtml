@@ -1,0 +1,163 @@
+@model TimetableFormViewModel
+@{
+    ViewData["Title"] = "Manage Timetable";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var days = new[] { "Monday","Tuesday","Wednesday","Thursday","Friday","Saturday" };
+}
+
+<div class="page-header">
+    <h1 class="page-title"><i class="fa-solid fa-calendar-days"></i> Manage Timetable</h1>
+</div>
+
+@* Faculty selector *@
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="d-flex align-items-center gap-3">
+            <label class="form-label mb-0">Viewing timetable for:</label>
+            <select name="facultyId" class="form-control" style="max-width:250px"
+                    onchange="this.form.submit()">
+                @foreach (var f in Model.AllFaculty)
+                {
+                    if (f.FacultyId == Model.FacultyId)
+                    {
+                <option value="@f.FacultyId" selected>@f.Name (@f.Subject)</option>
+                    }
+                    else
+                    {
+                <option value="@f.FacultyId">@f.Name (@f.Subject)</option>
+                    }
+                }
+            </select>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header"><i class="fa-solid fa-plus"></i> Add Slot</div>
+            <div class="card-body">
+                <form asp-action="AddTimetableSlot" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="FacultyId" value="@Model.FacultyId" />
+
+                    <div class="form-group">
+                        <label class="form-label">Day</label>
+                        <select name="DayOfWeek" class="form-control" required>
+                            <option value="">-- Day --</option>
+                            @foreach (var d in days)
+                            {
+                            <option value="@d">@d</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Semester</label>
+                        <select name="SemesterId" class="form-control" id="semSel"
+                                onchange="loadClasses(this.value)" required>
+                            <option value="">-- Select --</option>
+                            @foreach (var s in Model.Semesters)
+                            {
+                            <option value="@s.SemesterId">Semester @s.SemesterNumber</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Class</label>
+                        <select name="ClassId" class="form-control" id="clsSel" required>
+                            <option value="">-- Select Semester --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Subject</label>
+                        <input name="Subject" class="form-control" list="subList"
+                               placeholder="Select or type" required />
+                        <datalist id="subList">
+                            @foreach (var s in Model.Subjects)
+                        {
+                            <option value="@s" />
+                        }
+                        </datalist>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col">
+                            <label class="form-label">Start</label>
+                            <input type="time" name="StartTime" class="form-control" required />
+                        </div>
+                        <div class="form-group col">
+                            <label class="form-label">End</label>
+                            <input type="time" name="EndTime" class="form-control" required />
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fa-solid fa-plus"></i> Add Slot
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="fa-solid fa-table-cells"></i> Weekly Timetable
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.ExistingSlots.Any())
+                {
+                <div class="text-center text-muted py-5">
+                    <i class="fa-solid fa-calendar-xmark fa-2x mb-2"></i>
+                    <p>No slots added yet.</p>
+                </div>
+                }
+                else
+                {
+                @foreach (var day in days)
+                    {
+                        var slots = Model.ExistingSlots.Where(s => s.DayOfWeek == day).ToList();
+                        if (!slots.Any()) continue;
+                <div class="timetable-day">
+                    <div class="timetable-day-header">@day</div>
+                    @foreach (var slot in slots)
+                            {
+                    <div class="timetable-slot">
+                        <div>
+                            <strong>@slot.Subject</strong>
+                            <span class="text-muted small ms-2">@slot.ClassName · Sem @slot.SemesterNumber</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge badge-info">@slot.StartTime – @slot.EndTime</span>
+                            <form asp-action="DeleteTimetableSlot" method="post" style="display:inline"
+                                  onsubmit="return confirm('Remove this slot?')">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@slot.TimetableId" />
+                                <input type="hidden" name="facultyId" value="@Model.FacultyId" />
+                                <button class="btn btn-sm btn-danger">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                            }
+                </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function loadClasses(semesterId) {
+            const sel = document.getElementById('clsSel');
+            sel.innerHTML = '<option>Loading...</option>';
+            fetch('/Admin/GetClasses?semesterId=' + semesterId)
+                .then(r => r.json())
+                .then(data => {
+                    sel.innerHTML = '<option value="">-- Select Class --</option>';
+                    data.forEach(c => sel.innerHTML += `<option value="${c.classId}">${c.className}</option>`);
+                });
+        }
+    </script>
+}

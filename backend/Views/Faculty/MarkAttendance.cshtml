@@ -1,0 +1,219 @@
+@model MarkAttendanceViewModel
+@{
+    ViewData["Title"]  = "Mark Attendance";
+    ViewData["Active"] = "mark";
+}
+
+<div class="page-header">
+    <h2 class="page-title"><i class="fa-solid fa-pen-to-square"></i> Mark Attendance</h2>
+    <span class="badge badge-secondary">@Model.Date.ToString("dddd, dd MMM yyyy")</span>
+</div>
+
+<!-- ══ Selector Form ══ -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 class="card-title">Select Class</h3>
+    </div>
+    <div class="card-body">
+        <form method="get" id="selectorForm">
+            <div class="filter-row">
+                <div class="form-group">
+                    <label class="form-label">Semester</label>
+                    <select name="semesterId" id="semesterSelect" class="form-control" required>
+                        <option value="">— Select —</option>
+                        @foreach (var sem in Model.Semesters)
+                        {<option value="@sem.SemesterId"
+        selected="@(Model.SemesterId == sem.SemesterId)">
+    Semester @sem.SemesterNumber
+</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Class</label>
+                    <select name="classId" id="classSelect" class="form-control" required>
+                        <option value="">— Select —</option>
+                        @foreach (var cls in Model.Classes)
+                        {
+                            <option value="@cls.ClassId"
+                                    selected="@(Model.ClassId == cls.ClassId)">
+                                Class @cls.ClassName
+                            </option>
+                         }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Subject</label>
+                    <select name="subject" id="subjectSelect" class="form-control" required>
+                        <option value="">— Select —</option>
+                        @foreach (var sub in Model.Subjects)
+                        {
+                            <option value="@sub"
+                                    selected="@(Model.Subject == sub)">
+                                @sub
+                            </option>}
+                    </select>
+                </div>
+                <div class="form-group align-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-users"></i> Load Students
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══ Attendance Sheet ══ -->
+@if (Model.Students.Any())
+{
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fa-solid fa-list-check"></i>
+                Students — @Model.Subject · Sem @Model.SemesterId · Class @Model.ClassId
+            </h3>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline" onclick="markAll('present')">
+                    <i class="fa-solid fa-check-double"></i> All Present
+                </button>
+                <button type="button" class="btn btn-sm btn-outline" onclick="markAll('absent')">
+                    <i class="fa-solid fa-xmark"></i> All Absent
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            <form asp-action="MarkAttendance" method="post" id="attendanceForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="FacultyId"   value="@Model.FacultyId" />
+                <input type="hidden" name="SemesterId"  value="@Model.SemesterId" />
+                <input type="hidden" name="ClassId"     value="@Model.ClassId" />
+                <input type="hidden" name="Subject"     value="@Model.Subject" />
+                <input type="hidden" name="Date"        value="@Model.Date.ToString("yyyy-MM-dd")" />
+
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width:50px">#</th>
+                            <th>Roll No</th>
+                            <th>Student Name</th>
+                            <th>Present</th>
+                            <th>Absent</th>
+                            <th>Late</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Students.Count; i++)
+                        {
+                            var st = Model.Students[i];
+                            <tr class="@(st.AlreadyMarked ? "row-muted" : "")">
+                                <td>@(i + 1)</td>
+                                <td>
+                                    <strong>@st.RollNo</strong>
+                                    <input type="hidden" name="Students[@i].StudentId" value="@st.StudentId" />
+                                    <input type="hidden" name="Students[@i].RollNo"    value="@st.RollNo" />
+                                    <input type="hidden" name="Students[@i].Name"      value="@st.Name" />
+                                </td>
+                                <td>
+                                    @st.Name
+                                    @if (st.AlreadyMarked)
+                                    {
+                                        <span class="badge badge-secondary ms-2">re-mark</span>
+                                    }
+                                </td>
+                                @{
+                                    string rowId  = $"row_{i}";
+                                    string curSt  = st.AlreadyMarked ? st.Status : "present";
+                                }
+                                <td>
+                                    <label class="radio-btn radio-green">
+                                        <input type="radio" name="Students[@i].Status" value="present"
+                                               class="status-radio" data-row="@rowId"
+                                               @(curSt == "present" ? "checked" : "") />
+                                        <i class="fa-solid fa-check"></i>
+                                    </label>
+                                </td>
+                                <td>
+                                    <label class="radio-btn radio-red">
+                                        <input type="radio" name="Students[@i].Status" value="absent"
+                                               class="status-radio" data-row="@rowId"
+                                               @(curSt == "absent" ? "checked" : "") />
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </label>
+                                </td>
+                                <td>
+                                    <label class="radio-btn radio-yellow">
+                                        <input type="radio" name="Students[@i].Status" value="late"
+                                               class="status-radio" data-row="@rowId"
+                                               @(curSt == "late" ? "checked" : "") />
+                                        <i class="fa-solid fa-clock"></i>
+                                    </label>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <div class="form-footer">
+                    <div class="attendance-counter" id="counter">
+                        <span class="text-green"><i class="fa-solid fa-check"></i> <span id="presentCount">0</span> Present</span>
+                        <span class="text-red"><i class="fa-solid fa-xmark"></i> <span id="absentCount">0</span> Absent</span>
+                        <span class="text-yellow"><i class="fa-solid fa-clock"></i> <span id="lateCount">0</span> Late</span>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Attendance
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+else if (Model.SemesterId > 0 && Model.ClassId > 0 && !string.IsNullOrEmpty(Model.Subject))
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        No students found for the selected class/semester.
+    </div>
+}
+
+@section Scripts {
+<script>
+// Dynamic class loading when semester changes
+document.getElementById('semesterSelect')?.addEventListener('change', function() {
+    const semId = this.value;
+    if (!semId) return;
+    fetch(`/Faculty/GetClasses?semesterId=${semId}`)
+        .then(r => r.json())
+        .then(data => {
+            const sel = document.getElementById('classSelect');
+            sel.innerHTML = '<option value="">— Select —</option>';
+            data.forEach(c => {
+                sel.innerHTML += `<option value="${c.classId}">Class ${c.className}</option>`;
+            });
+        });
+});
+
+// Real-time counter
+function updateCounter() {
+    let p = 0, a = 0, l = 0;
+    document.querySelectorAll('.status-radio:checked').forEach(r => {
+        if (r.value === 'present') p++;
+        else if (r.value === 'absent') a++;
+        else if (r.value === 'late') l++;
+    });
+    document.getElementById('presentCount').textContent = p;
+    document.getElementById('absentCount').textContent  = a;
+    document.getElementById('lateCount').textContent    = l;
+}
+
+document.querySelectorAll('.status-radio').forEach(r => r.addEventListener('change', updateCounter));
+updateCounter(); // initial
+
+// Mark all
+function markAll(status) {
+    document.querySelectorAll(`.status-radio[value="${status}"]`).forEach(r => r.checked = true);
+    updateCounter();
+}
+</script>
+}

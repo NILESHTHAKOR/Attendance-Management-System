@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] != null ? $"{ViewData["Title"]} – AttendanceMS" : "AttendanceMS")</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+
+    @{
+    var role      = ViewBag.UserRole as string ?? "";
+    var userName  = ViewBag.UserName as string ?? "";
+    var isStudent = role == "student";
+    var isFaculty = role == "faculty";
+    }
+
+    <!-- ══ SIDEBAR ══════════════════════════════════════════════════════ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <i class="fa-solid fa-clipboard-check"></i>
+            <span>AttendanceMS</span>
+        </div>
+
+        <div class="sidebar-user">
+            <div class="sidebar-user-avatar">
+                @(userName.Length > 0 ? userName[0].ToString().ToUpper() : "?")
+            </div>
+            <div class="sidebar-user-info">
+                <div class="sidebar-user-name">@userName</div>
+                <div class="sidebar-user-role">@role.ToUpperInvariant()</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            @if (isStudent)
+        {
+            <a class="sidebar-link @(ViewData["Active"]?.ToString() == "dashboard" ? "active" : "")"
+               asp-controller="Student" asp-action="Index">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span>Dashboard</span>
+            </a>
+            <a class="sidebar-link @(ViewData["Active"]?.ToString() == "report" ? "active" : "")"
+               asp-controller="Student" asp-action="Report">
+                <i class="fa-solid fa-chart-bar"></i>
+                <span>My Attendance</span>
+            </a>
+        }
+            @if (isFaculty)
+        {
+            <a class="sidebar-link @(ViewData["Active"]?.ToString() == "dashboard" ? "active" : "")"
+               asp-controller="Faculty" asp-action="Index">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span>Dashboard</span>
+            </a>
+            <a class="sidebar-link @(ViewData["Active"]?.ToString() == "mark" ? "active" : "")"
+               asp-controller="Faculty" asp-action="MarkAttendance">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span>Mark Attendance</span>
+            </a>
+            <a class="sidebar-link @(ViewData["Active"]?.ToString() == "report" ? "active" : "")"
+               asp-controller="Faculty" asp-action="ClassReport">
+                <i class="fa-solid fa-chart-bar"></i>
+                <span>Class Reports</span>
+            </a>
+            <a class="sidebar-link @(ViewData["Active"]?.ToString() == "timetable" ? "active" : "")"
+               asp-controller="Faculty" asp-action="Timetable">
+                <i class="fa-solid fa-calendar-week"></i>
+                <span>My Timetable</span>
+            </a>
+            <a class="sidebar-link @(ViewData["Active"]?.ToString() == "threshold" ? "active" : "")"
+               asp-controller="Faculty" asp-action="Threshold">
+                <i class="fa-solid fa-sliders"></i>
+                <span>Thresholds</span>
+            </a>
+        }
+            @if (role == "admin")
+        {
+            <div class="sidebar-divider"></div>
+            <div class="sidebar-section-label">Admin</div>
+            <a class="sidebar-link @(ViewData["Active"]?.ToString() == "admin-dashboard" ? "active" : "")"
+               asp-controller="Admin" asp-action="Index">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>Admin Panel</span>
+            </a>
+            <a class="sidebar-link @(ViewData["Active"]?.ToString() == "admin-faculty" ? "active" : "")"
+               asp-controller="Admin" asp-action="Faculty">
+                <i class="fa-solid fa-user-tie"></i>
+                <span>Manage Faculty</span>
+            </a>
+            <a class="sidebar-link @(ViewData["Active"]?.ToString() == "admin-students" ? "active" : "")"
+               asp-controller="Admin" asp-action="Students">
+                <i class="fa-solid fa-users"></i>
+                <span>Manage Students</span>
+            </a>
+            <a class="sidebar-link @(ViewData["Active"]?.ToString() == "admin-subjects" ? "active" : "")"
+               asp-controller="Admin" asp-action="Subjects">
+                <i class="fa-solid fa-book"></i>
+                <span>Subjects</span>
+            </a>
+            <a class="sidebar-link @(ViewData["Active"]?.ToString() == "admin-timetable" ? "active" : "")"
+               asp-controller="Admin" asp-action="Timetable">
+                <i class="fa-solid fa-calendar-days"></i>
+                <span>Timetable</span>
+            </a>
+        }
+        </nav>
+
+        <div class="sidebar-footer">
+            <form asp-controller="Auth" asp-action="Logout" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="sidebar-logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Sign Out</span>
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <!-- ══ MAIN ═════════════════════════════════════════════════════════ -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <button class="topbar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="topbar-title">@(ViewData["Title"] ?? "Dashboard")</div>
+            <div class="topbar-right">
+                <span class="topbar-date">
+                    <i class="fa-regular fa-calendar"></i>
+                    @DateTime.Today.ToString("dd MMM yyyy")
+                </span>
+            </div>
+        </header>
+
+        <main class="page-content">
+            <!-- Flash messages -->
+            @if (TempData["Success"] is string successMsg)
+        {
+            <div class="alert alert-success">
+                <i class="fa-solid fa-circle-check"></i> @successMsg
+                <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+            </div>
+        }
+            @if (TempData["Error"] is string errorMsg)
+        {
+            <div class="alert alert-danger">
+                <i class="fa-solid fa-circle-exclamation"></i> @errorMsg
+                <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+            </div>
+        }
+
+            @RenderBody()
+        </main>
+    </div>
+
+    <!-- Overlay for mobile sidebar -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <script>
+        // Sidebar toggle
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const toggle = document.getElementById('sidebarToggle');
+
+        function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+        function toggleSidebar() { sidebar.classList.toggle('open'); overlay.classList.toggle('show'); }
+
+        toggle?.addEventListener('click', toggleSidebar);
+        overlay?.addEventListener('click', closeSidebar);
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,177 @@
+@model ThresholdViewModel
+@{
+    ViewData["Title"]  = "Attendance Thresholds";
+    ViewData["Active"] = "threshold";
+}
+
+<div class="page-header">
+    <h2 class="page-title"><i class="fa-solid fa-sliders"></i> Attendance Thresholds</h2>
+</div>
+
+<div class="two-col-grid">
+
+    <!-- Set Threshold Form -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Set Threshold</h3>
+        </div>
+        <div class="card-body">
+            <form asp-action="Threshold" method="post">
+                @Html.AntiForgeryToken()
+
+                <div class="alert alert-info mb-4">
+                    <i class="fa-solid fa-circle-info"></i>
+                    Thresholds determine student status automatically after each attendance mark.
+                    Leave Semester/Class empty to apply globally.
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Semester (optional)</label>
+                    <select name="SemesterId" class="form-control" id="semesterSelect">
+                        <option value="">All Semesters (global)</option>
+                        @foreach (var sem in Model.Semesters)
+                        {
+                            <option value="@sem.SemesterId">Semester @sem.SemesterNumber</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Class (optional)</label>
+                    <select name="ClassId" class="form-control" id="classSelect">
+                        <option value="">All Classes</option>
+                        @foreach (var cls in Model.Classes)
+                        {
+                            <option value="@cls.ClassId">Sem @cls.SemesterId / Class @cls.ClassName</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="BlacklistThreshold" class="form-label">
+                        <span class="badge badge-danger">Blacklist</span> below (%)
+                    </label>
+                    <input asp-for="BlacklistThreshold" type="number" step="0.5" min="1" max="99"
+                           class="form-control" />
+                    <span asp-validation-for="BlacklistThreshold" class="field-error"></span>
+                    <p class="form-hint">Students below this percentage are BLACKLISTED.</p>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="WarningThreshold" class="form-label">
+                        <span class="badge badge-warning">Warning</span> below (%)
+                    </label>
+                    <input asp-for="WarningThreshold" type="number" step="0.5" min="1" max="99"
+                           class="form-control" />
+                    <span asp-validation-for="WarningThreshold" class="field-error"></span>
+                    <p class="form-hint">Students below this percentage (but above blacklist) get WARNING.</p>
+                </div>
+
+                <!-- Live preview -->
+                <div class="threshold-preview" id="thresholdPreview">
+                    <h4>Preview</h4>
+                    <div class="threshold-zones">
+                        <div class="zone zone-red" id="zoneRed">
+                            Blacklisted: 0 – <span id="blVal">@Model.BlacklistThreshold</span>%
+                        </div>
+                        <div class="zone zone-yellow" id="zoneYellow">
+                            Warning: <span id="blVal2">@Model.BlacklistThreshold</span> – <span id="wlVal">@Model.WarningThreshold</span>%
+                        </div>
+                        <div class="zone zone-green" id="zoneGreen">
+                            Active: <span id="wlVal2">@Model.WarningThreshold</span> – 100%
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full mt-3">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Threshold
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Current Thresholds Table -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">All Configured Thresholds</h3>
+        </div>
+        <div class="card-body p-0">
+            @if (!Model.All.Any())
+            {
+                <div class="empty-state">No custom thresholds set.</div>
+            }
+            else
+            {
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Scope</th>
+                            <th>Blacklist</th>
+                            <th>Warning</th>
+                            <th>Type</th>
+                            <th>Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model.All)
+                        {
+                            <tr>
+                                <td>
+                                    @(
+        t.IsGlobal ? "Global" :
+        t.ClassId.HasValue ? "Class Level" :
+        t.SemesterId.HasValue ? "Semester Level" :
+        "Faculty Level"
+     )
+                                </td>
+                                <td><span class="badge badge-danger">&lt; @t.BlacklistThreshold%</span></td>
+                                <td><span class="badge badge-warning">&lt; @t.WarningThreshold%</span></td>
+                                <td>
+                                    @if (t.IsGlobal)
+                                    {
+                                        <span class="badge badge-secondary">Global</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-secondary">Custom</span>
+                                    }
+                                </td>
+                                <td>@t.UpdatedAt.ToString("dd MMM yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const blInput = document.querySelector('input[name="BlacklistThreshold"]');
+const wlInput = document.querySelector('input[name="WarningThreshold"]');
+
+function updatePreview() {
+    const bl = parseFloat(blInput.value) || 0;
+    const wl = parseFloat(wlInput.value) || 0;
+    document.querySelectorAll('[id^="blVal"]').forEach(el => el.textContent = bl);
+    document.querySelectorAll('[id^="wlVal"]').forEach(el => el.textContent = wl);
+}
+
+blInput?.addEventListener('input', updatePreview);
+wlInput?.addEventListener('input', updatePreview);
+
+document.getElementById('semesterSelect')?.addEventListener('change', function() {
+    const semId = this.value;
+    fetch(`/Faculty/GetClasses?semesterId=${semId}`)
+        .then(r => r.json())
+        .then(data => {
+            const sel = document.getElementById('classSelect');
+            sel.innerHTML = '<option value="">All Classes</option>';
+            data.forEach(c => {
+                sel.innerHTML += `<option value="${c.classId}">Sem ${c.semesterId} / Class ${c.className}</option>`;
+            });
+        });
+});
+</script>
+}
